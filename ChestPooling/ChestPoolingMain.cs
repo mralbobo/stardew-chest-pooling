@@ -13,10 +13,14 @@ using System.IO;
 //bugs while playing:
 /*
     - adding an item to a chest that already has a partial in the open chest and in the remote chest, might duplicate. 
-    Need to add a pre-check for the open chest to give it priority.
+    Need to add a pre-check for the open chest to give it priority. * probably fixed, nope, seems that the isn't full check broke being able to remote add when
+    theres a full stack
     - weirdness when item exists in multiple places, possibly only when stacks are mostly full
 
 
+    - need to come up with a system to properly identify if an item should stay in it's current chest
+    if the item matched in the chest is literally the same item, then it should start the move check
+    if it's not, abort
 */
 
 namespace ChestPooling
@@ -25,35 +29,8 @@ namespace ChestPooling
     {
         public override void Entry(params object[] objects)
         {
-            //StardewModdingAPI.Events.PlayerEvents.InventoryChanged
-            //StardewModdingAPI.Events.MenuEvents.MenuChanged
-            //StardewModdingAPI.Events.LocationEvents.LocationObjectsChanged
-            //StardewModdingAPI.Events.EventArgsInventoryChanged
-
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.couldInventoryAcceptThisItem
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.couldInventoryAcceptThisObject
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.cupboard
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.dropItem
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.getAdjacentTiles
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.GetDropLocation
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.GetGrabTile
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.getIndexOfInventoryItem
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.hasItemInInventory
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.hasItemInList
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.hasItemOfType
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.hasItemWithNameThatContains
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.increaseBackpackSize
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.Items
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.removeItemFromInventory
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.toolBox
-            //StardewModdingAPI.Entities.SPlayer.CurrentFarmer.warpFarmer
-
             StardewModdingAPI.Events.PlayerEvents.InventoryChanged += Event_InventoryChanged;
-
-            StardewModdingAPI.Events.LocationEvents.CurrentLocationChanged += Event_CurrentLocationChanged;
-
             StardewModdingAPI.Events.GameEvents.LoadContent += Event_LoadContent;
-
         }
 
         static bool loaded = false;
@@ -70,21 +47,10 @@ namespace ChestPooling
             Console.WriteLine(descriptor + "\n"+ thing);
         }
 
-        static void Event_CurrentLocationChanged(object sender, EventArgs e)
-        {
-            //loaded = true;
-
-        }
-
+        //there's probably an "onloaded" property somewhere that could be tested instead...
         static void Event_LoadContent(object sender, EventArgs e)
         {
             loaded = true;
-
-        }
-
-        static void getChest(KeyValuePair<Vector2, StardewValley.Object> obj)
-        {
-
         }
 
         static List<StardewValley.Objects.Chest> getChests()
@@ -108,7 +74,7 @@ namespace ChestPooling
 
             //still in progress...
             // this isn't picking up chests inside "built" buildings, like the barn
-            // might as well make sure the actually operation works first though
+            // might as well make sure the actual operation works first though
             /*
             StardewValley.Farm farm = StardewValley.Game1.getFarm();
             if (farm != null) {
@@ -130,51 +96,65 @@ namespace ChestPooling
             //Log.Info("chest list: " + chestList.Count);
 
             return chestList;
-
         }
 
-        static StardewValley.Objects.Chest QueryChests(List<StardewValley.Objects.Chest> chestList, StardewValley.Item itemRemoved)
+        static StardewValley.Objects.Chest getOpenChest()
         {
-            StardewValley.Objects.Chest openChest = null;
-            StardewValley.Objects.Chest chestWithStack = null;
-            StardewValley.Item itemToAddTo = null;
-            bool hasFoundCurrentChest = false;
-
             if (StardewValley.Game1.activeClickableMenu is StardewValley.Menus.ItemGrabMenu)
             {
                 StardewValley.Menus.ItemGrabMenu menu = StardewValley.Game1.activeClickableMenu as StardewValley.Menus.ItemGrabMenu;
                 if (menu.behaviorOnItemGrab != null && menu.behaviorOnItemGrab.Target is StardewValley.Objects.Chest)
                 {
-                    openChest = menu.behaviorOnItemGrab.Target as StardewValley.Objects.Chest;
-                    //Log.Info("open chest (other) first item: " + openChest.items.First().Name);
+                    return menu.behaviorOnItemGrab.Target as StardewValley.Objects.Chest;
                 }
             }
+            return null;
+        }
+
+        static bool isExactItemInChest(StardewValley.Item sourceItem, StardewValley.Objects.Chest chest)
+        {
+            foreach (StardewValley.Item item in chest.items)
+            {
+                if (item == sourceItem) { return true; }
+            }
+            return false;
+        }
+
+        // stackSizeOffset, a value to subtract before the stacksize comparison, basically just exists for the "openChest" case, where the item has already been added
+        static StardewValley.Item matchingItemInChest(StardewValley.Item sourceItem, StardewValley.Objects.Chest chest, int stackSizeOffset = 0)
+        {
+            foreach (StardewValley.Item item in chest.items)
+            {
+                //weirdly, this is an equals check
+                //if (sourceItem.canStackWith(item) && (item.Stack - stackSizeOffset) < item.maximumStackSize() && item.Stack - stackSizeOffset > 0)
+                if (sourceItem.canStackWith(item) && item.Stack < item.maximumStackSize() && item != sourceItem)
+                {
+                    return item;
+                }
+            }
+            return null;
+        }
+
+        static StardewValley.Objects.Chest QueryChests(List<StardewValley.Objects.Chest> chestList, StardewValley.Item itemRemoved)
+        {
+            Log.Info("queryStarted");
+            StardewValley.Objects.Chest openChest = getOpenChest();
+            StardewValley.Objects.Chest chestWithStack = null;
+            StardewValley.Item itemToAddTo = null;
+            bool hasFoundCurrentChest = false;
 
             //likely in some other menu
-            if (openChest == null)
-            {
+            if (openChest == null) { return null; }
+            Log.Info("openChest isn't null");
+            //the place where it went is fine
+            if (!isExactItemInChest(itemRemoved, openChest)){
+                Log.Info("item in open chest, aborting");
                 return null;
             }
+            Log.Info("isn't in the current chest");
 
             foreach (StardewValley.Objects.Chest chest in chestList)
             {
-                //don't do anything special if it's in the current chest
-                //might be only way to check if it's open...
-                //this is actually a bit flawed, since simply standing near chests opens them, so by being near 2 chests you can duplicate shit
-                /*
-                if (chest.currentLidFrame == 135) {
-                    if(chest == openChest)
-                    {
-                        Log.Info("matched");
-                    }
-                    else
-                    {
-                        Log.Info("didn't match");
-                    }
-                    openChest = chest;
-                    continue;
-                }
-                */
                 if(chest == openChest)
                 {
                     hasFoundCurrentChest = true;
@@ -184,7 +164,8 @@ namespace ChestPooling
                 //found something, don't bother going any further
                 //consider adding another check that completely bails if both the open and "withStack" chest is found
                 if (chestWithStack != null) { continue; }
-                
+
+                /*
                 foreach(StardewValley.Item item in chest.items)
                 {
                     if (itemRemoved.canStackWith(item) && item.Stack < item.maximumStackSize())
@@ -197,6 +178,13 @@ namespace ChestPooling
                     }
                     
                 }
+                */
+                StardewValley.Item item = matchingItemInChest(itemRemoved, chest);
+                if(item != null)
+                {
+                    chestWithStack = chest;
+                    itemToAddTo = item;
+                }
             }
 
             //user probably just threw away the item
@@ -205,9 +193,11 @@ namespace ChestPooling
             {
                 return null;
             }
+            Log.Info("current chest was found");
 
-            if(chestWithStack != null)
+            if (chestWithStack != null)
             {
+                Log.Info("chestWithStack isn't null");
                 if (openChest.items.Count > 0 && chestWithStack.items.Count > 0)
                 {
                     Log.Info("open chest first item: " + openChest.items.First().Name);
@@ -219,7 +209,9 @@ namespace ChestPooling
                 //resize it in the chest it was placed in
                 if (newStackSize > itemRemoved.maximumStackSize())
                 {
+                    Log.Info("stack maxed");
                     itemRemoved.Stack = newStackSize - itemRemoved.maximumStackSize();
+                    itemToAddTo.Stack = itemToAddTo.maximumStackSize();
                 }
                 //actually do things
                 else
