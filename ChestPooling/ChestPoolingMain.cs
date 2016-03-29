@@ -135,9 +135,10 @@ namespace ChestPooling
             return null;
         }
 
+        //method is poorly named
         static StardewValley.Objects.Chest QueryChests(List<StardewValley.Objects.Chest> chestList, StardewValley.Item itemRemoved)
         {
-            Log.Info("queryStarted");
+            //Log.Info("queryStarted");
             StardewValley.Objects.Chest openChest = getOpenChest();
             StardewValley.Objects.Chest chestWithStack = null;
             StardewValley.Item itemToAddTo = null;
@@ -145,13 +146,13 @@ namespace ChestPooling
 
             //likely in some other menu
             if (openChest == null) { return null; }
-            Log.Info("openChest isn't null");
+            //Log.Info("openChest isn't null");
             //the place where it went is fine
             if (!isExactItemInChest(itemRemoved, openChest)){
-                Log.Info("item in open chest, aborting");
+                //Log.Info("item in open chest, aborting");
                 return null;
             }
-            Log.Info("isn't in the current chest");
+           // Log.Info("isn't in the current chest");
 
             foreach (StardewValley.Objects.Chest chest in chestList)
             {
@@ -165,20 +166,6 @@ namespace ChestPooling
                 //consider adding another check that completely bails if both the open and "withStack" chest is found
                 if (chestWithStack != null) { continue; }
 
-                /*
-                foreach(StardewValley.Item item in chest.items)
-                {
-                    if (itemRemoved.canStackWith(item) && item.Stack < item.maximumStackSize())
-                    {
-                        chestWithStack = chest;
-                        //newStackSize = item.Stack + itemRemoved.Stack;
-                        itemToAddTo = item;
-
-                        break;
-                    }
-                    
-                }
-                */
                 StardewValley.Item item = matchingItemInChest(itemRemoved, chest);
                 if(item != null)
                 {
@@ -193,15 +180,15 @@ namespace ChestPooling
             {
                 return null;
             }
-            Log.Info("current chest was found");
+            //Log.Info("current chest was found");
 
             if (chestWithStack != null)
             {
                 Log.Info("chestWithStack isn't null");
                 if (openChest.items.Count > 0 && chestWithStack.items.Count > 0)
                 {
-                    Log.Info("open chest first item: " + openChest.items.First().Name);
-                    Log.Info("target chest first item: " + chestWithStack.items.First().Name);
+                    //Log.Info("open chest first item: " + openChest.items.First().Name);
+                    //Log.Info("target chest first item: " + chestWithStack.items.First().Name);
                 }
 
                 int newStackSize = newStackSize = itemToAddTo.Stack + itemRemoved.Stack;
@@ -209,7 +196,7 @@ namespace ChestPooling
                 //resize it in the chest it was placed in
                 if (newStackSize > itemRemoved.maximumStackSize())
                 {
-                    Log.Info("stack maxed");
+                    //Log.Info("stack maxed");
                     itemRemoved.Stack = newStackSize - itemRemoved.maximumStackSize();
                     itemToAddTo.Stack = itemToAddTo.maximumStackSize();
                 }
@@ -217,7 +204,7 @@ namespace ChestPooling
                 else
                 {
                     itemToAddTo.addToStack(itemRemoved.Stack);
-                    Log.Info(itemToAddTo.Name + " new size: " + newStackSize);
+                    //Log.Info(itemToAddTo.Name + " new size: " + newStackSize);
                     openChest.grabItemFromChest(itemRemoved, StardewModdingAPI.Entities.SPlayer.CurrentFarmer);
                 }
             }
@@ -239,46 +226,8 @@ namespace ChestPooling
             List<StardewValley.Objects.Chest>  chestList = getChests();
             if (chestList == null) { return; }
 
-            //now have (kind of) the list of chests, and the item that was just removed or updated from inventory, do something with that
-            //for first pass, probably just ignore the update version (less then full stack)
+
             QueryChests(chestList, inventoryEvent.Removed.First().Item);
-
-            //debugThing(inventoryEvent.QuantityChanged);
-            /*
-            StardewValley.Farm farm = StardewValley.Game1.getFarm();
-
-            Log.Info(StardewValley.Game1.locations[0].Name);
-            Log.Info(StardewValley.Game1.currentLocation.Name);
-
-            if (farm == null) { return;  }
-
-            int count = 0;
-            foreach (KeyValuePair<Vector2, StardewValley.Object> keyPair in farm.Objects)
-            {
-                if(keyPair.Value is StardewValley.Objects.Chest)
-                {
-                    StardewValley.Objects.Chest chest = keyPair.Value as StardewValley.Objects.Chest;
-                    //chest.addItem
-                   // Log.Info("first item " + chest.items[0].Name);
-                    count++;
-                }
-            }
-            */
-
-            //Log.Info(count + " chests");
-
-            //StardewValley.Objects.Chest
-            //StardewValley.Game1.getFarm().buildings
-            //farm.openChest()
-            //farm.openItemChest()
-            //farm.Objects
-
-            //Log.Info("inventoryEvent");
-            //debugThing(inventoryEvent.Removed);
-
-
-            //debugThing(farm.buildings);
-
         }
     }
 }
