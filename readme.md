@@ -10,7 +10,7 @@ Breaking this up into steps:
 
 ## Installation
 * install SMAPI http://community.playstarbound.com/threads/stardew-modding-api-0-39-2.108375/
-* download somehow (I'll probably add a zip at some point)
+* download https://github.com/mralbobo/stardew-chest-pooling/releases
 * place in mods folder
 
 ## Known bugs
