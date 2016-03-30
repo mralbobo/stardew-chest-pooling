@@ -33,6 +33,13 @@ namespace ChestPooling
             StardewModdingAPI.Events.GameEvents.LoadContent += Event_LoadContent;
         }
 
+        static void myLog(String theString) { 
+            #if DEBUG
+            Log.Info(theString);
+            #endif
+
+        }
+
         static bool loaded = false;
 
 
@@ -60,6 +67,7 @@ namespace ChestPooling
 
             List<StardewValley.Objects.Chest> chestList = new List<StardewValley.Objects.Chest>();
 
+            //get chests from normal buildings
             foreach (StardewValley.GameLocation location in StardewValley.Game1.locations)
             {
                 foreach (KeyValuePair<Vector2, StardewValley.Object> farmObj in location.Objects)
@@ -69,31 +77,35 @@ namespace ChestPooling
                         chestList.Add(farmObj.Value as StardewValley.Objects.Chest);
                     }
                 }
+
+                //get fridge
+                if (location is StardewValley.Locations.FarmHouse)
+                {
+                    StardewValley.Locations.FarmHouse house = location as StardewValley.Locations.FarmHouse;
+                    if(house.fridge != null)
+                    {
+                        chestList.Add(house.fridge);
+                    }
+                }
             }
-
-
-            //still in progress...
-            // this isn't picking up chests inside "built" buildings, like the barn
-            // might as well make sure the actual operation works first though
-            /*
+            
+            //get stuff inside build buildings
             StardewValley.Farm farm = StardewValley.Game1.getFarm();
             if (farm != null) {
-
                 foreach (StardewValley.Buildings.Building building in farm.buildings)
                 {
-                    if(building.)
-                    foreach (KeyValuePair<Vector2, StardewValley.Object> farmObj in building.indoors.Objects)
+                    if (building.indoors != null)
                     {
-                        if (farmObj.Value is StardewValley.Objects.Chest)
+                        foreach (KeyValuePair<Vector2, StardewValley.Object> farmObj in building.indoors.Objects)
                         {
-                            chestList.Add(farmObj.Value as StardewValley.Objects.Chest);
+                            if (farmObj.Value is StardewValley.Objects.Chest)
+                            {
+                                chestList.Add(farmObj.Value as StardewValley.Objects.Chest);
+                            }
                         }
                     }
                 }
             }
-            */
-
-            //Log.Info("chest list: " + chestList.Count);
 
             return chestList;
         }
@@ -184,7 +196,7 @@ namespace ChestPooling
 
             if (chestWithStack != null)
             {
-                Log.Info("chestWithStack isn't null");
+                //Log.Info("chestWithStack isn't null");
                 if (openChest.items.Count > 0 && chestWithStack.items.Count > 0)
                 {
                     //Log.Info("open chest first item: " + openChest.items.First().Name);
@@ -197,6 +209,7 @@ namespace ChestPooling
                 if (newStackSize > itemRemoved.maximumStackSize())
                 {
                     //Log.Info("stack maxed");
+                    myLog("stack maxed for " + itemToAddTo.Name);
                     itemRemoved.Stack = newStackSize - itemRemoved.maximumStackSize();
                     itemToAddTo.Stack = itemToAddTo.maximumStackSize();
                 }
@@ -204,7 +217,7 @@ namespace ChestPooling
                 else
                 {
                     itemToAddTo.addToStack(itemRemoved.Stack);
-                    //Log.Info(itemToAddTo.Name + " new size: " + newStackSize);
+                    myLog(itemToAddTo.Name + " new size: " + newStackSize);
                     openChest.grabItemFromChest(itemRemoved, StardewModdingAPI.Entities.SPlayer.CurrentFarmer);
                 }
             }
