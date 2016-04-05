@@ -39,7 +39,7 @@ namespace ChestPooling
             #endif
 
         }
-
+        
         static bool loaded = false;
 
 
@@ -107,7 +107,16 @@ namespace ChestPooling
                 }
             }
 
+            chestList.RemoveAll(IsIgnored);
+
+
             return chestList;
+        }
+
+        //chest filter predicate
+        private static bool IsIgnored(StardewValley.Objects.Chest chest)
+        {
+            return chest.Name == "IGNORED";
         }
 
         static StardewValley.Objects.Chest getOpenChest()
