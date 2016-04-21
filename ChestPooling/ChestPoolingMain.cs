@@ -41,7 +41,7 @@ namespace ChestPooling
         }
         
         static bool loaded = false;
-
+        
 
         static void debugThing(object theObject, string descriptor = "")
         {
@@ -121,20 +121,40 @@ namespace ChestPooling
 
         static StardewValley.Objects.Chest getOpenChest()
         {
+            if (StardewValley.Game1.activeClickableMenu == null) { return null; }
+
             if (StardewValley.Game1.activeClickableMenu is StardewValley.Menus.ItemGrabMenu)
             {
+                myLog("it's an item grab");
                 StardewValley.Menus.ItemGrabMenu menu = StardewValley.Game1.activeClickableMenu as StardewValley.Menus.ItemGrabMenu;
                 if (menu.behaviorOnItemGrab != null && menu.behaviorOnItemGrab.Target is StardewValley.Objects.Chest)
                 {
                     return menu.behaviorOnItemGrab.Target as StardewValley.Objects.Chest;
                 }
             }
+            else
+            {
+                myLog("something else" + StardewValley.Game1.activeClickableMenu.GetType().Name);
+                if(StardewValley.Game1.activeClickableMenu.GetType().Name == "ACAMenu")
+                {
+                    dynamic thing = (dynamic)StardewValley.Game1.activeClickableMenu;
+                    if(thing != null && thing.chestItems != null)
+                    {
+                        myLog("woo, survived");
+                        StardewValley.Objects.Chest aChest = new StardewValley.Objects.Chest(true);
+                        aChest.items = thing.chestItems;
+                        return aChest;
+                    }
+                }
+                
+                //debugThing(StardewValley.Game1.activeClickableMenu);
+            }
             return null;
         }
 
-        static bool isExactItemInChest(StardewValley.Item sourceItem, StardewValley.Objects.Chest chest)
+        static bool isExactItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items)
         {
-            foreach (StardewValley.Item item in chest.items)
+            foreach (StardewValley.Item item in items)
             {
                 if (item == sourceItem) { return true; }
             }
@@ -142,9 +162,9 @@ namespace ChestPooling
         }
 
         // stackSizeOffset, a value to subtract before the stacksize comparison, basically just exists for the "openChest" case, where the item has already been added
-        static StardewValley.Item matchingItemInChest(StardewValley.Item sourceItem, StardewValley.Objects.Chest chest, int stackSizeOffset = 0)
+        static StardewValley.Item matchingItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items, int stackSizeOffset = 0)
         {
-            foreach (StardewValley.Item item in chest.items)
+            foreach (StardewValley.Item item in items)
             {
                 //weirdly, this is an equals check
                 //if (sourceItem.canStackWith(item) && (item.Stack - stackSizeOffset) < item.maximumStackSize() && item.Stack - stackSizeOffset > 0)
@@ -169,7 +189,7 @@ namespace ChestPooling
             if (openChest == null) { return null; }
             //Log.Info("openChest isn't null");
             //the place where it went is fine
-            if (!isExactItemInChest(itemRemoved, openChest)){
+            if (!isExactItemInChest(itemRemoved, openChest.items)){
                 //Log.Info("item in open chest, aborting");
                 return null;
             }
@@ -177,7 +197,7 @@ namespace ChestPooling
 
             foreach (StardewValley.Objects.Chest chest in chestList)
             {
-                if(chest == openChest)
+                if(chest.items == openChest.items)
                 {
                     hasFoundCurrentChest = true;
                     continue;
@@ -187,7 +207,7 @@ namespace ChestPooling
                 //consider adding another check that completely bails if both the open and "withStack" chest is found
                 if (chestWithStack != null) { continue; }
 
-                StardewValley.Item item = matchingItemInChest(itemRemoved, chest);
+                StardewValley.Item item = matchingItemInChest(itemRemoved, chest.items);
                 if(item != null)
                 {
                     chestWithStack = chest;
@@ -227,7 +247,9 @@ namespace ChestPooling
                 {
                     itemToAddTo.addToStack(itemRemoved.Stack);
                     myLog(itemToAddTo.Name + " new size: " + newStackSize);
-                    openChest.grabItemFromChest(itemRemoved, StardewModdingAPI.Entities.SPlayer.CurrentFarmer);
+                    openChest.items.Remove(itemRemoved);
+                    openChest.clearNulls();
+                    //openChest.grabItemFromChest(itemRemoved, StardewModdingAPI.Entities.SPlayer.CurrentFarmer);
                 }
             }
 
