@@ -125,7 +125,7 @@ namespace ChestPooling
 
             if (StardewValley.Game1.activeClickableMenu is StardewValley.Menus.ItemGrabMenu)
             {
-                myLog("it's an item grab");
+                //myLog("it's an item grab");
                 StardewValley.Menus.ItemGrabMenu menu = StardewValley.Game1.activeClickableMenu as StardewValley.Menus.ItemGrabMenu;
                 if (menu.behaviorOnItemGrab != null && menu.behaviorOnItemGrab.Target is StardewValley.Objects.Chest)
                 {
@@ -249,6 +249,7 @@ namespace ChestPooling
                     myLog(itemToAddTo.Name + " new size: " + newStackSize);
                     openChest.items.Remove(itemRemoved);
                     openChest.clearNulls();
+                    Game1.activeClickableMenu = (StardewValley.Menus.IClickableMenu)new StardewValley.Menus.ItemGrabMenu(openChest.items, false, true, new StardewValley.Menus.InventoryMenu.highlightThisItem(StardewValley.Menus.InventoryMenu.highlightAllItems), new StardewValley.Menus.ItemGrabMenu.behaviorOnItemSelect(openChest.grabItemFromInventory), (string)null, new StardewValley.Menus.ItemGrabMenu.behaviorOnItemSelect(openChest.grabItemFromChest), false, true, true, true, true, 1, (Item)openChest, -1, (object)null);
                     //openChest.grabItemFromChest(itemRemoved, StardewModdingAPI.Entities.SPlayer.CurrentFarmer);
                 }
             }
