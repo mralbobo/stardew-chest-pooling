@@ -27,23 +27,27 @@ namespace ChestPooling
 {
     public class ChestPoolingMainClass : Mod
     {
-        public override void Entry(params object[] objects)
+        /// <summary>Initialise the mod.</summary>
+        /// <param name="helper">Provides methods for interacting with the mod directory, such as read/writing a config file or custom JSON files.</param>
+        public override void Entry(IModHelper helper)
         {
             StardewModdingAPI.Events.PlayerEvents.InventoryChanged += Event_InventoryChanged;
             StardewModdingAPI.Events.GameEvents.LoadContent += Event_LoadContent;
         }
 
-        static void myLog(String theString) { 
+
+
+        private void myLog(String theString) { 
             #if DEBUG
             Log.Info(theString);
             #endif
 
         }
         
-        static bool loaded = false;
+        private bool loaded = false;
         
 
-        static void debugThing(object theObject, string descriptor = "")
+        private void debugThing(object theObject, string descriptor = "")
         {
             String thing = JsonConvert.SerializeObject(theObject, Formatting.Indented,
             new JsonSerializerSettings
@@ -55,12 +59,12 @@ namespace ChestPooling
         }
 
         //there's probably an "onloaded" property somewhere that could be tested instead...
-        static void Event_LoadContent(object sender, EventArgs e)
+        private void Event_LoadContent(object sender, EventArgs e)
         {
             loaded = true;
         }
 
-        static List<StardewValley.Objects.Chest> getChests()
+        private List<StardewValley.Objects.Chest> getChests()
         {
             if (!loaded) { return null; }
             if (StardewValley.Game1.currentLocation == null) { return null; }
@@ -114,12 +118,12 @@ namespace ChestPooling
         }
 
         //chest filter predicate
-        private static bool IsIgnored(StardewValley.Objects.Chest chest)
+        private bool IsIgnored(StardewValley.Objects.Chest chest)
         {
             return chest.Name == "IGNORED";
         }
 
-        static StardewValley.Objects.Chest getOpenChest()
+        private StardewValley.Objects.Chest getOpenChest()
         {
             if (StardewValley.Game1.activeClickableMenu == null) { return null; }
 
@@ -152,7 +156,7 @@ namespace ChestPooling
             return null;
         }
 
-        static bool isExactItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items)
+        private bool isExactItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items)
         {
             foreach (StardewValley.Item item in items)
             {
@@ -162,7 +166,7 @@ namespace ChestPooling
         }
 
         // stackSizeOffset, a value to subtract before the stacksize comparison, basically just exists for the "openChest" case, where the item has already been added
-        static StardewValley.Item matchingItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items, int stackSizeOffset = 0)
+        private StardewValley.Item matchingItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items, int stackSizeOffset = 0)
         {
             foreach (StardewValley.Item item in items)
             {
@@ -177,7 +181,7 @@ namespace ChestPooling
         }
 
         //method is poorly named
-        static StardewValley.Objects.Chest QueryChests(List<StardewValley.Objects.Chest> chestList, StardewValley.Item itemRemoved)
+        private StardewValley.Objects.Chest QueryChests(List<StardewValley.Objects.Chest> chestList, StardewValley.Item itemRemoved)
         {
             //Log.Info("queryStarted");
             StardewValley.Objects.Chest openChest = getOpenChest();
@@ -258,7 +262,7 @@ namespace ChestPooling
         }
 
         //e is a thing that contains "Inventory", "Added" and "Removed" properties, not yet sure what object that corresponds to
-        static void Event_InventoryChanged(object sender, EventArgs e)
+        private void Event_InventoryChanged(object sender, EventArgs e)
         {
             if (!loaded) { return; }
             if(StardewValley.Game1.currentLocation == null) { return; }
