@@ -22,9 +22,6 @@ Breaking this up into steps:
 * Unzip it into your `Stardew Valley/Mods` folder.
 
 ## Known bugs
-* Doesn't work on chests inside constructed buildings, barn, coop, etc. Can probably fix this, need
-  motivation.
-* Fridge doesn't connect, not a bug strictly speaking but it's something I want.
 * Not terribly fond of the behavior when a stack is filled in the currently open chest. But I'm
   fairly sure I need either a "chestUpdated" or "beforeInventoryChanged" event to fix it
   consistently.
