@@ -1,13 +1,13 @@
-﻿using Microsoft.Xna.Framework;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using StardewValley;
-using StardewModdingAPI;
-using Newtonsoft.Json;
 using System.IO;
+using System.Linq;
+using Newtonsoft.Json;
+using StardewModdingAPI;
+using StardewValley;
+using StardewValley.Locations;
+using StardewValley.Menus;
+using StardewValley.Objects;
 
 
 //bugs while playing:
@@ -25,8 +25,18 @@ using System.IO;
 
 namespace ChestPooling
 {
+    /// <summary>The mod entry point.</summary>
     public class ChestPoolingMainClass : Mod
     {
+        /*********
+        ** Properties
+        *********/
+        private bool Loaded;
+
+
+        /*********
+        ** Public methods
+        *********/
         /// <summary>Initialise the mod.</summary>
         /// <param name="helper">Provides methods for interacting with the mod directory, such as read/writing a config file or custom JSON files.</param>
         public override void Entry(IModHelper helper)
@@ -36,18 +46,17 @@ namespace ChestPooling
         }
 
 
-
-        private void myLog(String theString) { 
-            #if DEBUG
+        /*********
+        ** Private methods
+        *********/
+        private void DebugLog(String theString)
+        {
+#if DEBUG
             Log.Info(theString);
-            #endif
-
+#endif
         }
-        
-        private bool loaded = false;
-        
 
-        private void debugThing(object theObject, string descriptor = "")
+        private void DebugThing(object theObject, string descriptor = "")
         {
             String thing = JsonConvert.SerializeObject(theObject, Formatting.Indented,
             new JsonSerializerSettings
@@ -55,59 +64,42 @@ namespace ChestPooling
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore
             });
             File.WriteAllText("debug.json", thing);
-            Console.WriteLine(descriptor + "\n"+ thing);
+            Console.WriteLine(descriptor + "\n" + thing);
         }
 
         //there's probably an "onloaded" property somewhere that could be tested instead...
         private void Event_LoadContent(object sender, EventArgs e)
         {
-            loaded = true;
+            Loaded = true;
         }
 
-        private List<StardewValley.Objects.Chest> getChests()
+        private List<Chest> GetChests()
         {
-            if (!loaded) { return null; }
-            if (StardewValley.Game1.currentLocation == null) { return null; }
+            if (!Loaded || Game1.currentLocation == null)
+                return null;
 
-            List<StardewValley.Objects.Chest> chestList = new List<StardewValley.Objects.Chest>();
+            List<Chest> chestList = new List<Chest>();
 
             //get chests from normal buildings
-            foreach (StardewValley.GameLocation location in StardewValley.Game1.locations)
+            foreach (GameLocation location in Game1.locations)
             {
-                foreach (KeyValuePair<Vector2, StardewValley.Object> farmObj in location.Objects)
-                {
-                    if (farmObj.Value is StardewValley.Objects.Chest)
-                    {
-                        chestList.Add(farmObj.Value as StardewValley.Objects.Chest);
-                    }
-                }
+                //get chests
+                chestList.AddRange(location.Objects.Values.OfType<Chest>());
 
                 //get fridge
-                if (location is StardewValley.Locations.FarmHouse)
-                {
-                    StardewValley.Locations.FarmHouse house = location as StardewValley.Locations.FarmHouse;
-                    if(house.fridge != null)
-                    {
-                        chestList.Add(house.fridge);
-                    }
-                }
+                FarmHouse house = location as FarmHouse;
+                if (house?.fridge != null)
+                    chestList.Add(house.fridge);
             }
-            
+
             //get stuff inside build buildings
-            StardewValley.Farm farm = StardewValley.Game1.getFarm();
-            if (farm != null) {
+            Farm farm = Game1.getFarm();
+            if (farm != null)
+            {
                 foreach (StardewValley.Buildings.Building building in farm.buildings)
                 {
                     if (building.indoors != null)
-                    {
-                        foreach (KeyValuePair<Vector2, StardewValley.Object> farmObj in building.indoors.Objects)
-                        {
-                            if (farmObj.Value is StardewValley.Objects.Chest)
-                            {
-                                chestList.Add(farmObj.Value as StardewValley.Objects.Chest);
-                            }
-                        }
-                    }
+                        chestList.AddRange(building.indoors.Objects.Values.OfType<Chest>());
                 }
             }
 
@@ -118,90 +110,83 @@ namespace ChestPooling
         }
 
         //chest filter predicate
-        private bool IsIgnored(StardewValley.Objects.Chest chest)
+        private bool IsIgnored(Chest chest)
         {
             return chest.Name == "IGNORED";
         }
 
-        private StardewValley.Objects.Chest getOpenChest()
+        private Chest GetOpenChest()
         {
-            if (StardewValley.Game1.activeClickableMenu == null) { return null; }
+            if (Game1.activeClickableMenu == null)
+                return null;
 
-            if (StardewValley.Game1.activeClickableMenu is StardewValley.Menus.ItemGrabMenu)
+            if (Game1.activeClickableMenu is ItemGrabMenu)
             {
-                //myLog("it's an item grab");
-                StardewValley.Menus.ItemGrabMenu menu = StardewValley.Game1.activeClickableMenu as StardewValley.Menus.ItemGrabMenu;
-                if (menu.behaviorOnItemGrab != null && menu.behaviorOnItemGrab.Target is StardewValley.Objects.Chest)
-                {
-                    return menu.behaviorOnItemGrab.Target as StardewValley.Objects.Chest;
-                }
+                //DebugLog("it's an item grab");
+                ItemGrabMenu menu = (ItemGrabMenu)Game1.activeClickableMenu;
+                Chest chest = menu.behaviorOnItemGrab?.Target as Chest;
+                if (chest != null)
+                    return chest;
             }
             else
             {
-                myLog("something else" + StardewValley.Game1.activeClickableMenu.GetType().Name);
-                if(StardewValley.Game1.activeClickableMenu.GetType().Name == "ACAMenu")
+                this.DebugLog("something else" + Game1.activeClickableMenu.GetType().Name);
+                if (Game1.activeClickableMenu.GetType().Name == "ACAMenu")
                 {
-                    dynamic thing = (dynamic)StardewValley.Game1.activeClickableMenu;
-                    if(thing != null && thing.chestItems != null)
+                    dynamic thing = Game1.activeClickableMenu;
+                    if (thing != null && thing.chestItems != null)
                     {
-                        myLog("woo, survived");
-                        StardewValley.Objects.Chest aChest = new StardewValley.Objects.Chest(true);
-                        aChest.items = thing.chestItems;
-                        return aChest;
+                        this.DebugLog("woo, survived");
+                        return new Chest(true) { items = thing.chestItems };
                     }
                 }
-                
-                //debugThing(StardewValley.Game1.activeClickableMenu);
+
+                //DebugThing(StardewValley.Game1.activeClickableMenu);
             }
             return null;
         }
 
-        private bool isExactItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items)
+        private bool isExactItemInChest(Item sourceItem, List<Item> items)
         {
-            foreach (StardewValley.Item item in items)
-            {
-                if (item == sourceItem) { return true; }
-            }
-            return false;
+            return items.Any(item => item == sourceItem);
         }
 
-        // stackSizeOffset, a value to subtract before the stacksize comparison, basically just exists for the "openChest" case, where the item has already been added
-        private StardewValley.Item matchingItemInChest(StardewValley.Item sourceItem, List<StardewValley.Item> items, int stackSizeOffset = 0)
+        private Item matchingItemInChest(Item sourceItem, List<Item> items)
         {
-            foreach (StardewValley.Item item in items)
+            foreach (Item item in items)
             {
                 //weirdly, this is an equals check
                 //if (sourceItem.canStackWith(item) && (item.Stack - stackSizeOffset) < item.maximumStackSize() && item.Stack - stackSizeOffset > 0)
                 if (sourceItem.canStackWith(item) && item.Stack < item.maximumStackSize() && item != sourceItem)
-                {
                     return item;
-                }
             }
             return null;
         }
 
         //method is poorly named
-        private StardewValley.Objects.Chest QueryChests(List<StardewValley.Objects.Chest> chestList, StardewValley.Item itemRemoved)
+        private Chest QueryChests(List<Chest> chestList, Item itemRemoved)
         {
             //Log.Info("queryStarted");
-            StardewValley.Objects.Chest openChest = getOpenChest();
-            StardewValley.Objects.Chest chestWithStack = null;
-            StardewValley.Item itemToAddTo = null;
+            Chest openChest = this.GetOpenChest();
+            Chest chestWithStack = null;
+            Item itemToAddTo = null;
             bool hasFoundCurrentChest = false;
 
             //likely in some other menu
-            if (openChest == null) { return null; }
+            if (openChest == null)
+                return null;
             //Log.Info("openChest isn't null");
             //the place where it went is fine
-            if (!isExactItemInChest(itemRemoved, openChest.items)){
+            if (!isExactItemInChest(itemRemoved, openChest.items))
+            {
                 //Log.Info("item in open chest, aborting");
                 return null;
             }
-           // Log.Info("isn't in the current chest");
+            // Log.Info("isn't in the current chest");
 
-            foreach (StardewValley.Objects.Chest chest in chestList)
+            foreach (Chest chest in chestList)
             {
-                if(chest.items == openChest.items)
+                if (chest.items == openChest.items)
                 {
                     hasFoundCurrentChest = true;
                     continue;
@@ -209,10 +194,11 @@ namespace ChestPooling
 
                 //found something, don't bother going any further
                 //consider adding another check that completely bails if both the open and "withStack" chest is found
-                if (chestWithStack != null) { continue; }
+                if (chestWithStack != null)
+                    continue;
 
-                StardewValley.Item item = matchingItemInChest(itemRemoved, chest.items);
-                if(item != null)
+                Item item = matchingItemInChest(itemRemoved, chest.items);
+                if (item != null)
                 {
                     chestWithStack = chest;
                     itemToAddTo = item;
@@ -221,10 +207,8 @@ namespace ChestPooling
 
             //user probably just threw away the item
             //could probably remove this check as a "cheat" to allow remote deposit...
-            if (openChest == null || !hasFoundCurrentChest)
-            {
+            if (!hasFoundCurrentChest)
                 return null;
-            }
             //Log.Info("current chest was found");
 
             if (chestWithStack != null)
@@ -236,13 +220,13 @@ namespace ChestPooling
                     //Log.Info("target chest first item: " + chestWithStack.items.First().Name);
                 }
 
-                int newStackSize = newStackSize = itemToAddTo.Stack + itemRemoved.Stack;
+                int newStackSize = itemToAddTo.Stack + itemRemoved.Stack;
 
                 //resize it in the chest it was placed in
                 if (newStackSize > itemRemoved.maximumStackSize())
                 {
                     //Log.Info("stack maxed");
-                    myLog("stack maxed for " + itemToAddTo.Name);
+                    this.DebugLog("stack maxed for " + itemToAddTo.Name);
                     itemRemoved.Stack = newStackSize - itemRemoved.maximumStackSize();
                     itemToAddTo.Stack = itemToAddTo.maximumStackSize();
                 }
@@ -250,10 +234,10 @@ namespace ChestPooling
                 else
                 {
                     itemToAddTo.addToStack(itemRemoved.Stack);
-                    myLog(itemToAddTo.Name + " new size: " + newStackSize);
+                    this.DebugLog(itemToAddTo.Name + " new size: " + newStackSize);
                     openChest.items.Remove(itemRemoved);
                     openChest.clearNulls();
-                    Game1.activeClickableMenu = (StardewValley.Menus.IClickableMenu)new StardewValley.Menus.ItemGrabMenu(openChest.items, false, true, new StardewValley.Menus.InventoryMenu.highlightThisItem(StardewValley.Menus.InventoryMenu.highlightAllItems), new StardewValley.Menus.ItemGrabMenu.behaviorOnItemSelect(openChest.grabItemFromInventory), (string)null, new StardewValley.Menus.ItemGrabMenu.behaviorOnItemSelect(openChest.grabItemFromChest), false, true, true, true, true, 1, (Item)openChest, -1, (object)null);
+                    Game1.activeClickableMenu = new ItemGrabMenu(openChest.items, false, true, InventoryMenu.highlightAllItems, openChest.grabItemFromInventory, null, openChest.grabItemFromChest, false, true, true, true, true, 1, openChest);
                     //openChest.grabItemFromChest(itemRemoved, StardewModdingAPI.Entities.SPlayer.CurrentFarmer);
                 }
             }
@@ -264,17 +248,17 @@ namespace ChestPooling
         //e is a thing that contains "Inventory", "Added" and "Removed" properties, not yet sure what object that corresponds to
         private void Event_InventoryChanged(object sender, EventArgs e)
         {
-            if (!loaded) { return; }
-            if(StardewValley.Game1.currentLocation == null) { return; }
+            if (!Loaded || Game1.currentLocation == null)
+                return;
 
             //the real event, might be necessary to determine what item was placed where
             StardewModdingAPI.Events.EventArgsInventoryChanged inventoryEvent = (StardewModdingAPI.Events.EventArgsInventoryChanged)e;
+            if (inventoryEvent.Removed.Count == 0)
+                return;
 
-            if(inventoryEvent.Removed.Count == 0) { return; }
-
-            List<StardewValley.Objects.Chest>  chestList = getChests();
-            if (chestList == null) { return; }
-
+            List<Chest> chestList = this.GetChests();
+            if (chestList == null)
+                return;
 
             QueryChests(chestList, inventoryEvent.Removed.First().Item);
         }
