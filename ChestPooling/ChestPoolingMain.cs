@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Locations;
@@ -31,33 +30,29 @@ namespace ChestPooling
         /*********
         ** Public methods
         *********/
-        /// <summary>Initialise the mod.</summary>
-        /// <param name="helper">Provides methods for interacting with the mod directory, such as read/writing a config file or custom JSON files.</param>
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            StardewModdingAPI.Events.PlayerEvents.InventoryChanged += Event_InventoryChanged;
+            StardewModdingAPI.Events.PlayerEvents.InventoryChanged += this.Event_InventoryChanged;
         }
 
 
         /*********
         ** Private methods
         *********/
-        private void DebugLog(String theString)
+        private void DebugLog(string theString)
         {
 #if DEBUG
-            Log.Info(theString);
+            this.Monitor.Log(theString);
 #endif
         }
 
-        private void DebugThing(object theObject, string descriptor = "")
+        private void DebugThing(object data, string descriptor = "")
         {
-            String thing = JsonConvert.SerializeObject(theObject, Formatting.Indented,
-            new JsonSerializerSettings
-            {
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-            });
-            File.WriteAllText("debug.json", thing);
-            Console.WriteLine(descriptor + "\n" + thing);
+            this.Helper.WriteJsonFile("debug.json", data);
+            string result = File.ReadAllText(Path.Combine(this.Helper.DirectoryPath, "debug.json"));
+            this.Monitor.Log($"{descriptor}\n{result}");
         }
 
         private List<Chest> GetChests()

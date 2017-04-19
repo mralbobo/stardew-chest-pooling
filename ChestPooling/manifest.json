@@ -1,14 +1,13 @@
 {
   "Name": "Chest Pooling",
-  "Authour": "mralbobo",
+  "Author": "mralbobo",
   "Version": {
     "MajorVersion": 1,
     "MinorVersion": 2,
     "PatchVersion": 0,
-    "Build": ""
+    "Build": null
   },
-  "Description": "Allows depositing into all chests one operation.",
-  "UniqueID": "",
-  "PerSaveConfigs": false,
+  "Description": "Lets you deposit into all chests in one operation.",
+  "UniqueID": "mralbobo.ChestPooling",
   "EntryDll": "ChestPooling.dll"
 }
