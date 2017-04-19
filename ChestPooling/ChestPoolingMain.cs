@@ -29,12 +29,6 @@ namespace ChestPooling
     public class ChestPoolingMainClass : Mod
     {
         /*********
-        ** Properties
-        *********/
-        private bool Loaded;
-
-
-        /*********
         ** Public methods
         *********/
         /// <summary>Initialise the mod.</summary>
@@ -42,7 +36,6 @@ namespace ChestPooling
         public override void Entry(IModHelper helper)
         {
             StardewModdingAPI.Events.PlayerEvents.InventoryChanged += Event_InventoryChanged;
-            StardewModdingAPI.Events.GameEvents.LoadContent += Event_LoadContent;
         }
 
 
@@ -67,15 +60,9 @@ namespace ChestPooling
             Console.WriteLine(descriptor + "\n" + thing);
         }
 
-        //there's probably an "onloaded" property somewhere that could be tested instead...
-        private void Event_LoadContent(object sender, EventArgs e)
-        {
-            Loaded = true;
-        }
-
         private List<Chest> GetChests()
         {
-            if (!Loaded || Game1.currentLocation == null)
+            if (!Game1.hasLoadedGame || Game1.currentLocation == null)
                 return null;
 
             List<Chest> chestList = new List<Chest>();
@@ -248,7 +235,7 @@ namespace ChestPooling
         //e is a thing that contains "Inventory", "Added" and "Removed" properties, not yet sure what object that corresponds to
         private void Event_InventoryChanged(object sender, EventArgs e)
         {
-            if (!Loaded || Game1.currentLocation == null)
+            if (!Game1.hasLoadedGame || Game1.currentLocation == null)
                 return;
 
             //the real event, might be necessary to determine what item was placed where
