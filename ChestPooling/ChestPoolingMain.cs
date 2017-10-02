@@ -110,6 +110,8 @@ namespace ChestPooling
                 if (chest != null)
                     return chest;
             }
+            /*
+             * Remove experimental acamenu support, not worth
             else
             {
                 this.DebugLog("something else" + Game1.activeClickableMenu.GetType().Name);
@@ -125,6 +127,7 @@ namespace ChestPooling
 
                 //DebugThing(StardewValley.Game1.activeClickableMenu);
             }
+            */
             return null;
         }
 
