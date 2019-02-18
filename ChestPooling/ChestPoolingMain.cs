@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Netcode;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 using StardewValley;
+using StardewValley.Buildings;
 using StardewValley.Locations;
 using StardewValley.Menus;
 using StardewValley.Objects;
-using Netcode;
 
 
 //bugs while playing:
@@ -25,7 +26,7 @@ using Netcode;
 
 namespace ChestPooling
 {
-    /// <summary>The mod entry point.</summary>
+    /// <summary>The mod entry class loaded by SMAPI.</summary>
     public class ChestPoolingMainClass : Mod
     {
 
@@ -36,8 +37,7 @@ namespace ChestPooling
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            StardewModdingAPI.Events.PlayerEvents.InventoryChanged += this.Event_InventoryChanged;
-            //this.helper = helper;
+            helper.Events.Player.InventoryChanged += this.OnInventoryChanged;
             //long uniqueID = this.Helper.Multiplayer.GetNewID();
         }
 
@@ -59,9 +59,10 @@ namespace ChestPooling
             this.Monitor.Log($"{descriptor}\n{result}");
         }
 
-        private List<Chest> GetChests()
+        /// <summary>Get all chests in the game.</summary>
+        private IList<Chest> GetChests()
         {
-            if (!Game1.hasLoadedGame || Game1.currentLocation == null)
+            if (!Context.IsWorldReady || Game1.currentLocation == null)
                 return null;
 
             List<Chest> chestList = new List<Chest>();
@@ -70,28 +71,23 @@ namespace ChestPooling
             //get chests from normal buildings
             foreach (GameLocation location in Game1.locations)
             {
-                if(location == null) { break; }
+                if (location == null)
+                    break;
+
                 //get chests
                 chestList.AddRange(location.Objects.Values.OfType<Chest>());
 
                 //get fridge
-                FarmHouse house = location as FarmHouse;
-                
-                if (house != null)
-                {
-                    Chest fridge = house.fridge.Value;
-                    if (fridge != null)
-                    {
-                        chestList.Add(fridge);
-                    }
-                }  
+                Chest fridge = (location as FarmHouse)?.fridge.Value;
+                if (fridge != null)
+                    chestList.Add(fridge);
             }
 
             //get stuff inside build buildings
             Farm farm = Game1.getFarm();
             if (farm != null)
             {
-                foreach (StardewValley.Buildings.Building building in farm.buildings)
+                foreach (Building building in farm.buildings)
                 {
                     GameLocation indoors = building.indoors.Value;
                     if (indoors != null)
@@ -99,31 +95,15 @@ namespace ChestPooling
                 }
             }
 
-            chestList.RemoveAll(IsIgnored);
-
+            chestList.RemoveAll(chest => chest.Name == "IGNORED");
 
             return chestList;
         }
 
-        //chest filter predicate
-        private bool IsIgnored(Chest chest)
-        {
-            return chest.Name == "IGNORED";
-        }
-
         private Chest GetOpenChest()
         {
-            if (Game1.activeClickableMenu == null)
-                return null;
-
-            if (Game1.activeClickableMenu is ItemGrabMenu)
-            {
-                //DebugLog("it's an item grab");
-                ItemGrabMenu menu = (ItemGrabMenu)Game1.activeClickableMenu;
-                Chest chest = menu.behaviorOnItemGrab?.Target as Chest;
-                if (chest != null)
-                    return chest;
-            }
+            if (Game1.activeClickableMenu is ItemGrabMenu menu && menu.behaviorOnItemGrab?.Target is Chest chest)
+                return chest;
             return null;
         }
 
@@ -145,7 +125,7 @@ namespace ChestPooling
         }
 
         //method is poorly named
-        private Chest QueryChests(List<Chest> chestList, Item itemRemoved)
+        private Chest QueryChests(IList<Chest> chestList, Item itemRemoved)
         {
             //Log.Info("queryStarted");
             Chest openChest = this.GetOpenChest();
@@ -232,23 +212,19 @@ namespace ChestPooling
             return null;
         }
 
-        //e is a thing that contains "Inventory", "Added" and "Removed" properties, not yet sure what object that corresponds to
-        private void Event_InventoryChanged(object sender, EventArgs e)
+        /// <summary>Raised after items are added or removed to a player's inventory.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event data.</param>
+        private void OnInventoryChanged(object sender, InventoryChangedEventArgs e)
         {
-            if (!Game1.hasLoadedGame || Game1.currentLocation == null)
+            if (!Context.IsWorldReady || Game1.currentLocation == null || !e.IsLocalPlayer || !e.Removed.Any())
                 return;
 
-            //the real event, might be necessary to determine what item was placed where
-            StardewModdingAPI.Events.EventArgsInventoryChanged inventoryEvent = (StardewModdingAPI.Events.EventArgsInventoryChanged)e;
-            
-            if (inventoryEvent.Removed.Count == 0)
-                return;
-
-            List<Chest> chestList = this.GetChests();
+            IList<Chest> chestList = this.GetChests();
             if (chestList == null)
                 return;
 
-            QueryChests(chestList, inventoryEvent.Removed.First().Item);
+            QueryChests(chestList, e.Removed.First());
         }
     }
 }
